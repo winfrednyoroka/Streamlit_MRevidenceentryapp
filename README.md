@@ -4,5 +4,5 @@ This repo contains the code for creating a GUI entry form to populate the databa
 
 Here is an image of the entity relationship diagram (ERD) showing the database schema in details.
 
-![Database schema]('./Databaseschema_BMI_BP.png')
+![Database schema]('../Databaseschema_BMI_BP.png')
 
