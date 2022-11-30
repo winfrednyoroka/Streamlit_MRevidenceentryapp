@@ -4,5 +4,5 @@ This repo contains the code for creating a GUI entry form to populate the databa
 
 Here is an image of the entity relationship diagram (ERD) showing the database schema in details.
 
-![Database schema]('https://github.com/winfrednyoroka/Streamlit_MRevidenceentryapp/blob/main/Databaseschema_BMI_BP.png')
+![Databaseschema](Databaseschema_BMI_BP.png)
 
