@@ -13,10 +13,11 @@ c.execute("""CREATE TABLE IF NOT EXISTS "results" ("results_id" TEXT,"pmid" INTE
 def form():
     st.write("This is my data entry form")
     with st.form(key="STUDY", clear_on_submit=True):
+        st.subheader("STUDY TABLE")
         username=st.text_input("Enter your username")
         pmid=st.number_input("Enter the study pmid")
         title=st.text_input("Enter the study title")
-        population=st.text_input("Enter the population/ancestry")
+        population=st.selectbox("Enter the population/ancestry",["EUR","East Asian","Korean","AFR","AFR_AMR"])
         sex=st.selectbox("sex of participants",["female","male","both"])
         mean_age=st.number_input("Enter the mean_age of the participants")
         median_age=st.number_input("Enter the median_age of the participants")
@@ -29,37 +30,50 @@ def form():
         if submit_studybutton:
             adddata(pmid,title,population,sex,mean_age,median_age,lower_age,upper_age,year,samplesize,author)
     with st.form(key="EXPOSURE",clear_on_submit=True):
-        exposurename=st.text_input("Enter the name of the exposure under investigation")
-        exposureid=st.number_input("Enter the unique identifer of exposure")
+        st.subheader("EXPOSURE TABLE")
+        st.write("E1:BMI,E2:Adiposity,E3:WHR,E4:childhoodBMI,E5:adultBMI,E6:fatmassindex,E7:fatfreemassindex,E8:FA,E9:UFA,E10:obesity,E11:bodyfat%,E12:BMIWGRS,E13:BMIGRS")
+        exposurename=st.selectbox("exposure name",["BMI","Adiposity","WHR","childhoodBMI","adultBMI","fatmassindex","fatfreemassindex","FA","UFA","obesity","bodyfat%","BMIWGRS","BMIGRS"])
+        exposureid=st.selectbox("Enter expid",["E1","E2","E3","E4","E5","E6","E7","E8","E9","E10","E11","E12","E13"])
         submit_exposurebutton=st.form_submit_button(label="Submitexposureentry")
         if submit_exposurebutton:
             expentry(exposurename,exposureid)
     with st.form(key="OUTCOME",clear_on_submit=True):
-        outcomename=st.text_input("Enter the name of the outcome")
-        outcomeid=st.number_input("Enter the unique outcome identifier")
+        st.subheader("OUTCOME TABLE")
+        st.write("O1:incident hypertension,O2:ever hypertension,O3:hypertension,O4:gestational hypertension,O5:essential hypertension,O6:SBP,O7:DBP,O8:PAP,O9:PVremodelling,O10:Grade1diastolicdysfunction")
+        outcomename=st.selectbox("Enter the name of the outcome",["incident hypertension","ever hypertension","hypertension","gestational hypertension","essential hypertension","SBP","DBP","PAP","PVremodelling","Grade1diastolicdysfunction"])
+        outcomeid=st.selectbox("Enter the unique outcome identifier",["O1","O2","O3","O4","O5","O6","O7","O8","O9","O10"])
         submit_outcomebutton=st.form_submit_button(label="Submitoutcomeentry")
         if submit_outcomebutton:
             outentry(outcomename,outcomeid)
     with st.form(key="METHOD",clear_on_submit=True):
-        methodname=st.text_input("Enter the method name")
-        methodid=st.number_input("Enter the unique ID of methods")
+        st.subheader("METHOD TABLE")
+        st.write("M1:IVW,M2:Wetmedian,M3:Wetmode,M4:MREgger,M5:IVestimator,M6:MVMR,M7:penalisedwetmedian")
+        methodname=st.selectbox("Enter the method name",["IVW","Wetmedian","Wetmode","MREgger","IVestimator","MVMR","penalisedwetmedian"])
+        methodid=st.selectbox("Enter the unique ID of methods",["M1","M2","M3","M4","M5","M6","M7"])
         submit_methodbutton=st.form_submit_button(label="Submitmethodentry")
         if submit_methodbutton:
             methodentry(methodname,methodid)
     with st.form(key="EFFECTSIZE",clear_on_submit=True):
-        id=st.number_input("Enter unique identifier for each of the effectsizetype")
-        effectsizetype=st.text_input("Enter the effectsizetype")
+        st.subheader("EFFECTSIZETYPE TABLE")
+        st.write("ID1:OR,ID2:MD,ID3:HR")
+        id=st.selectbox("Enter unique identifier for each of the effectsizetype",["ID1","ID2","ID3"])
+        effectsizetype=st.selectbox("Enter the effectsizetype",["OR","MD","HR"])
         submit_effectsizebutton=st.form_submit_button(label="Submiteffectsizeentry")
         if submit_effectsizebutton:
             effectsizeentry(id,effectsizetype)
     with st.form(key="RESULTS",clear_on_submit=True):
+        st.subheader("RESULTS TABLE")
         pmid=st.number_input("Enter the study pmid")
-        methodid=st.number_input("Enter the unique ID of methods")
-        exposureid=st.number_input("Enter the unique identifer of exposure")
-        outcomeid=st.number_input("Enter the unique outcome identifier")
+        st.write("M1:IVW,M2:Wetmedian,M3:Wetmode,M4:MREgger,M5:IVestimator,M6:MVMR,M7:penalisedwetmedian")
+        methodid=st.selectbox("Enter the unique ID of methods",["M1","M2","M3","M4","M5","M6","M7"])
+        st.write("E1:BMI,E2:Adiposity,E3:WHR,E4:childhoodBMI,E5:adultBMI,E6:fatmassindex,E7:fatfreemassindex,E8:FA,E9:UFA,E10:obesity,E11:bodyfat%,E12:BMIWGRS,E13:BMIGRS")
+        exposureid=st.selectbox("Enter expid",["E1","E2","E3","E4","E5","E6","E7","E8","E9","E10","E11","E12","E13"])
+        st.write("O1:incident hypertension,O2:ever hypertension,O3:hypertension,O4:gestational hypertension,O5:essential hypertension,O6:SBP,O7:DBP,O8:PAP,O9:PVremodelling,O10:Grade1diastolicdysfunction")
+        outcomeid=st.selectbox("Enter the unique outcome identifier",["O1","O2","O3","O4","O5","O6","O7","O8","O9","O10"])
         resultsid=st.text_input("Enter the results id")
-        effectsize=st.number_input("Enter the effcetsize")
-        effectsizetype_id=st.number_input("Enter unique identifier for each of the effectsizetype")
+        effectsize=st.number_input("Enter the effectsize")
+        st.write("ID1:OR,ID2:MD,ID3:HR")
+        effectsizetype_id=st.selectbox("Enter unique identifier for each of the effectsizetype",["ID1","ID2","ID3"])
         lowerinterval=st.number_input("Enter the lower CI")
         upperinterval=st.number_input("Enter the upper CI")
         pvalue=st.number_input("Enter the pvalue")
@@ -69,27 +83,27 @@ def form():
             resultsentry(results_id,pmid,methodid,effectsize,lowerinterval,upperinterval,pvalue,exposureid,outcomeid,effectsizetype_id)
             #adddata(pmid,title,population,sex,mean_age,median_age,lower_age,upper_age,year,samplesize,author)#exposurename,exposureid,outcomename,outcomeid,methodname,methodid,id,effectsizetype,resultsid,effectsize,lowerinterval,upperinterval,pvalue)
 def expentry(a,b):
-	c.execute("INSERT INTO exposure VALUES (?,?)",(exposureid,exposurename))
+	c.execute("INSERT INTO exposure VALUES (?,?)",(a,b))
 	Mr_EvidenceDB.commit()
     #Mr_EvidenceDB.close()
 
 def outentry(a,b):
-	c.execute("INSERT INTO outcome VALUES (?,?)",(outcomeid,outcomename))
+	c.execute("INSERT INTO outcome VALUES (?,?)",(a,b))
 	Mr_EvidenceDB.commit()
     #Mr_EvidenceDB.close()
     
 def resultsentry(a,b,c,d,e,f,g,h,i,j):
-	c.execute("INSERT INTO results VALUES (?,?,?,?,?,?,?,?,?,?)",(results_id,pmid,methodid,effectsize,lowerinterval,upperinterval,pvalue,exposureid,outcomeid,effectsizetype_id))
+	c.execute("INSERT INTO results VALUES (?,?,?,?,?,?,?,?,?,?)",(a,b,c,d,e,f,g,h,i,j))
 	Mr_EvidenceDB.commit()
    #Mr_EvidenceDB.close()
 
 def methodentry(a,b):
-	c.execute("INSERT INTO methods VALUES (?,?)",(methodid,methodname))
+	c.execute("INSERT INTO methods VALUES (?,?)",(a,b))
 	Mr_EvidenceDB.commit()
     #Mr_EvidenceDB.close()
 
 def effectsizeentry(a,b):
-	c.execute("INSERT INTO effectsizetype VALUES (?,?)",(id,effectsizetype))
+	c.execute("INSERT INTO effectsizetype VALUES (?,?)",(a,b))
 	Mr_EvidenceDB.commit()
     #Mr_EvidenceDB.close()            
 def adddata(pmid,title,population,sex,mean_age,median_age,lower_age,upper_age,year,samplesize,author):#,exposurename,exposureid,outcomename,outcomeid,methodname,methodid,id,effectsizetype,resultsid,effectsize,lowerinterval,upperinterval,pvalue):
