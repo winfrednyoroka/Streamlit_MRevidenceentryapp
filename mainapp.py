@@ -14,7 +14,7 @@ def form():
     st.write("This is my data entry form")
     with st.form(key="STUDY", clear_on_submit=True):
         st.subheader("STUDY TABLE")
-        username=st.text_input("Enter your username")
+        username=st.selectbox("Enter your username",["Winfred","Tom","Yi","Debbie","Chris"])
         pmid=st.number_input("Enter the study pmid")
         title=st.text_input("Enter the study title")
         population=st.selectbox("Enter the population/ancestry",["EUR","East Asian","Korean","AFR","AFR_AMR"])
