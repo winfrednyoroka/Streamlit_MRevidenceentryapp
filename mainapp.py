@@ -28,7 +28,7 @@ def form():
         author=st.text_input("Enter the author names")
         submit_studybutton=st.form_submit_button(label="Submitstudyentry")
         if submit_studybutton:
-            adddata(pmid,title,population,sex,mean_age,median_age,lower_age,upper_age,year,samplesize,author)
+            adddata(pmid,title,population,sex,mean_age,median_age,lower_age,upper_age,year,samplesize,author,username)
     with st.form(key="EXPOSURE",clear_on_submit=True):
         st.subheader("EXPOSURE TABLE")
         st.write("E1:BMI,E2:Adiposity,E3:WHR,E4:childhoodBMI,E5:adultBMI,E6:fatmassindex,E7:fatfreemassindex,E8:FA,E9:UFA,E10:obesity,E11:bodyfat%,E12:BMIWGRS,E13:BMIGRS")
@@ -106,7 +106,7 @@ def effectsizeentry(a,b):
 	c.execute("INSERT INTO effectsizetype VALUES (?,?)",(a,b))
 	Mr_EvidenceDB.commit()
     #Mr_EvidenceDB.close()            
-def adddata(pmid,title,population,sex,mean_age,median_age,lower_age,upper_age,year,samplesize,author):#,exposurename,exposureid,outcomename,outcomeid,methodname,methodid,id,effectsizetype,resultsid,effectsize,lowerinterval,upperinterval,pvalue):
+def adddata(pmid,title,population,sex,mean_age,median_age,lower_age,upper_age,year,samplesize,author,username):#,exposurename,exposureid,outcomename,outcomeid,methodname,methodid,id,effectsizetype,resultsid,effectsize,lowerinterval,upperinterval,pvalue):
     """Populate the tables with data"""
     #c.execute("""CREATE TABLE IF NOT EXISTS "effectsizetype" ("id" TEXT,"effectsizetype" TEXT,PRIMARY KEY("id"));""")
     #c.execute("INSERT INTO effectsizetype VALUES (?,?)",(id,effectsizetype))
