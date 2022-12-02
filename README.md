@@ -6,3 +6,17 @@ Here is an image of the entity relationship diagram (ERD) showing the database s
 
 ![Databaseschema](Databaseschema_BMI_BP.png)
 
+
+## List of tools
+- python 3
+- streamlit
+- sqlite3
+
+## Install the tools using conda on mac M1
+    #Check that the code below matches your OS
+
+streamlit:  `conda install -c conda-forge streamlit`
+
+sqlite3:  `conda install -c blaze sqlite3`
+
+python: `conda install python=3`
