@@ -92,8 +92,8 @@ def outentry(a,b):
 	Mr_EvidenceDB.commit()
     #Mr_EvidenceDB.close()
     
-def resultsentry(a,b,c,d,e,f,g,h,i,j):
-	c.execute("INSERT INTO results VALUES (?,?,?,?,?,?,?,?,?,?)",(a,b,c,d,e,f,g,h,i,j))
+def resultsentry(a,b,d,e,f,g,h,i,j,k):
+	c.execute("INSERT INTO results VALUES (?,?,?,?,?,?,?,?,?,?)",(a,b,d,e,f,g,h,i,j,k))
 	Mr_EvidenceDB.commit()
     #Mr_EvidenceDB.close()
 
