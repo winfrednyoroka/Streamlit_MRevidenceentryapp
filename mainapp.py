@@ -82,7 +82,7 @@ def form():
         #image=st.camera_input("Take a picture to upload")
         submit_button=st.form_submit_button(label="SUBMIT")
         if submit_button:
-            resultsentry(resultsid,pmid,methodid,effectsize,lowerinterval,upperinterval,pvalue,exposureid,outcomeid,effectsizetype_id,se)
+            resultsentry(resultsid,pmid,methodid,effectsize,lowerinterval,upperinterval,pvalue,exposureid,outcomeid,effectsizetype_id,se,strata)
             #adddata(pmid,title,population,sex,mean_age,median_age,lower_age,upper_age,year,samplesize,author)#exposurename,exposureid,outcomename,outcomeid,methodname,methodid,id,effectsizetype,resultsid,effectsize,lowerinterval,upperinterval,pvalue)
 def expentry(a,b):
 	c.execute("INSERT INTO exposure VALUES (?,?)",(a,b))
