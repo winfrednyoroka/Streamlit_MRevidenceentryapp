@@ -12,8 +12,10 @@ Here is an image of the entity relationship diagram (ERD) showing the database s
 - streamlit
 - sqlite3
 
+# Export the environment alongside the packages
+    `conda env export -n mr_rct_environment > mr_rct_environment.yaml`
 
-To replicate my working environment including the packages and their versions in mac M1 clone the environment using the code below:
+# Replicate my working environment including the packages and their versions in mac M1 clone the environment:
 
     `conda env create -n cloned-mr_rct_env -f mr_rct_environment.yaml`
 
