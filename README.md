@@ -20,3 +20,7 @@ streamlit:  `conda install -c conda-forge streamlit`
 sqlite3:  `conda install -c blaze sqlite3`
 
 python: `conda install python=3`
+
+To replicate my working environment including the packages and their versions in mac M1 clone the environment using the code below:
+
+    `conda env create -n cloned-mr_rct_env -f mr_rct_environment.yaml`
