@@ -12,6 +12,14 @@ Here is an image of the entity relationship diagram (ERD) showing the database s
 - streamlit
 - sqlite3
 
+
+To replicate my working environment including the packages and their versions in mac M1 clone the environment using the code below:
+
+    `conda env create -n cloned-mr_rct_env -f mr_rct_environment.yaml`
+
+
+# Alternatively
+
 ## Install the tools using conda on mac M1
     #Check that the code below matches your OS
 
