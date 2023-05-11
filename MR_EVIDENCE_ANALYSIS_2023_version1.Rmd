@@ -1,0 +1,300 @@
+---
+title: "MRevidence_analysis_06_03_23"
+author: "Winfred Gatua"
+date: "06/03/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+
+```
+
+# DATA ANALYSIS FROM SQLITEDATABASE ---------------------------------------
+# Author: Winfred Gatua ---------------------------------------------------
+# Date:05/12/2022 ---------------------------------------------------------
+
+# set working directory
+```{r}
+setwd("~/OneDrive - University of Bristol/Winfred_PhDApps/Streamlit_MRevidenceentryapp/")
+```
+
+```{r}
+#install.packages('RSQLite')
+#install.packages("forestly")
+#devtools::install_github("elong0527/forestly")
+
+library(RSQLite)
+#library(dplyr)
+library(ggplot2)
+library(plotly)
+library(gridExtra)
+library(tidyverse)
+library(forestploter)
+library(grid)
+library(stringr)
+```
+# Connect to the database, read the tables, combine the data into a single dataframe
+```{r}
+
+con <- dbConnect(SQLite(),'Mr_EvidenceDB')
+#list tables
+dbListTables(con) #list down the tables
+result <- tbl(con, 'results')
+results <- data.frame(result)
+#exposure
+exposure <- tbl(con, 'exposure')
+exposure <- data.frame(exposure)
+colnames(exposure) <- c("exposurename","exposureid")
+exposure
+#outcome
+outcome <- tbl(con, 'outcome')
+outcome <- data.frame(outcome)
+colnames(outcome) <- c("outcomename","outcomeid") #rename the columns
+outcome
+#methods
+methods <- tbl(con, 'methods')
+methods <- data.frame(methods)
+colnames(methods) <- c("methodname","methodid") #rename the columns
+methods
+#study
+study <- tbl(con,'study')
+study <- data.frame(study)
+study
+#effectsizetype
+effectsizetype <- tbl(con,'effectsizetype')
+effectsizetype <- data.frame(effectsizetype)
+effectsizetype
+#merging two dataframes results and exposure
+results_exposure <- merge(results, exposure,by.x = "exposureid",by.y = "exposureid")
+#merge the above dataframe and outcome
+results_exposure_outcome <- merge(results_exposure,outcome, by.x = "outcomeid",by.y = "outcomeid")
+#merge with study table
+results_exposure_outcome_study <- merge(results_exposure_outcome,study, by.x = "pmid",by.y = "pmid")
+#merge the above with methods 
+results_exposure_outcome_study_method <- merge(results_exposure_outcome_study,methods, by.x = 'methodid',by.y='methodid')
+#merge the above with effectsizetype table
+results_exposure_outcome_study_method_effectsizetype <- merge(results_exposure_outcome_study_method, effectsizetype,by.x = 'effectsizetype_id',by.y = 'id')
+#reorder the columns
+colnames(results_exposure_outcome_study_method_effectsizetype)
+mydata <- results_exposure_outcome_study_method_effectsizetype[,c(3,6,15,24,22,16,23,17,18,19,20,21,
+                                                   5,13,4,14,2,25,1,26,7,8,9,10,11,12)]
+
+#Split the author column into two
+mydata[c('first_author','last_author')] <- str_split_fixed(mydata$author,pattern = ',',2)
+#combine pmid_first_author_exposure to be used as unique identifiers
+mydata$UID <- paste(mydata$pmid,mydata$first_author,mydata$exposurename, sep = "_")
+#mydata
+
+#write out the data to a csv file
+#write.table(mydata, file = "Obesity_HBP_MR_evidence.csv",sep = ",")
+```
+
+# Mean difference (ID2)
+####Looking at systolic blood pressure
+```{r}
+#Systolic blood pressure----
+mydata$effectsize[(mydata$effectsize==10.43)] <- 1.048
+mydata$lowerinterval[(mydata$lowerinterval==4.82)] <- 0.482
+mydata$upperinterval[(mydata$upperinterval==16.04)] <- 1.604
+
+mydata$effectsize[(mydata$effectsize==3.85)] <- 0.385
+mydata$lowerinterval[(mydata$lowerinterval==1.88)] <- 0.188
+mydata$upperinterval[(mydata$upperinterval==5.79)] <- 0.579
+#Diastolic blood pressure----
+mydata$effectsize[(mydata$effectsize==2.97)] <- 0.297
+mydata$lowerinterval[(mydata$lowerinterval==-0.08)] <- -0.008
+mydata$upperinterval[(mydata$upperinterval==6.03)] <- 0.603
+
+mydata$effectsize[(mydata$effectsize==1.79)] <- 0.179
+mydata$lowerinterval[(mydata$lowerinterval==0.680)] <- 0.068
+mydata$upperinterval[(mydata$upperinterval==2.90)] <- 0.290
+#modify Louise Millard results
+mydata$exposurename[mydata$exposurename == 'BMI' & mydata$effectsize == 0.29 & mydata$pmid == 26568383] <- "BMIscore32"
+
+mydata$exposurename[mydata$exposurename == 'BMI' & mydata$effectsize == 0.385 & mydata$pmid == 26568383] <- 'BMIscoreFTO'
+
+mydata$exposurename[mydata$exposurename == 'BMI' & mydata$effectsize == 0.305 & mydata$pmid == 26568383] <- "logBMIscore"
+
+p1 <- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID2" &outcomeid=="O6") %>% 
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=exposurename)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on mean difference', x='Systolic blood pressure change in mmHg', y = 'StudyPMID_Author_exposure') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  facet_grid(outcomename ~ exposurename)+
+  theme_classic()
+ggplotly(p1)
+```
+# Diastolic blood pressure
+#### Mean difference for diastolic blood pressure
+```{r}
+p2 <- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID2" &outcomeid=="O7") %>% 
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=exposurename)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on mean difference', x='Diastolic blood pressure change in mmHg', y = 'StudyPMID_Author_exposure') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  facet_grid(outcomename ~ exposurename)+
+  theme_classic()
+ggplotly(p2)
+
+```
+
+# Risk difference(ID5)
+## Can we use risk difference when reporting results for continuous traits?
+```{r}
+#Diastolic blood pressure----
+P3 <- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID5" & outcomeid=="O7") %>% 
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=outcomename)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on risk difference', x='Risk difference', y = 'StudyPMID_Author_exposure') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  #facet_wrap(vars(outcomename))+
+  theme_classic()
+ggplotly(P3)
+```
+
+#Risk diference
+```{r}
+#Hypertension----
+#Rename the exposures
+mydata$exposurename[mydata$exposurename == 'BMI' & mydata$effectsize == 0.83 & mydata$pmid == 32665587] <- "BMIsiblings"
+
+mydata$exposurename[mydata$exposurename == 'BMI' & mydata$effectsize == 0.76 & mydata$pmid == 32665587] <- 'BMIsiblingsplitsample'
+P4 <- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID5" & outcomeid=="O3") %>% 
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=exposurename)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Effect Size by study', x='Risk difference', y = 'StudyPMID_Author_exposure') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  facet_grid(exposurename ~ outcomename)+
+  theme_classic()
+ggplotly(P4)
+```
+
+
+#Beta estimates----
+```{r}
+#SBP----
+P5 <- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID4" & outcomeid== c("O6","O7") & population == 'EUR') %>% 
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=exposurename)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on beta estimates', x='Beta', y = 'StudyPMID_Author_exposure') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  facet_grid(exposurename ~ outcomename)+
+  theme_classic()
+ggplotly(P5)
+```
+
+```{r}
+#DBP----
+#Improve this plot
+P6 <- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID4" & outcomeid=="O7") %>% 
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=exposurename)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Effect Size by study', x='Beta', y = 'StudyPMID_Author_exposure') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  #facet_wrap(vars(outcomename))+
+  theme_classic()
+ggplotly(P6)
+```
+
+```{r}
+#Pulmonary arterial hypertension----
+class(results_exposure_outcome$standard_error)
+P7 <- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID4" & outcomeid=="O8") %>%
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval))+
+  geom_point(aes(color=exposurename)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on beta estimates', x='Beta', y = 'StudyPMID_Author_exposure') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  #facet_wrap(vars(outcomename))+
+  theme_classic()
+ggplotly(P7)
+```
+
+#Odds ratios
+```{r}
+#Hypertension----
+class(mydata$standard_error)
+P8 <- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID1" & outcomeid=="O3") %>%
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval))+
+  geom_point(aes(color=exposurename)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on odds ratios', x='Odds ratio', y = 'StudyPMID_Author_exposure') +
+  geom_vline(xintercept=1, color='black', linetype='dashed', alpha=.5) +
+  #facet_wrap(vars(outcomename))+
+  theme_classic()
+ggplotly(P8)
+```
+```{r}
+#SBP----
+class(mydata$standard_error)
+P9 <- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID1" & outcomeid=="O6") %>%
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval))+
+  geom_point(aes(color=exposurename)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on odds ratio', x='Odds ratio', y = 'StudyPMID_Author_exposure') +
+  geom_vline(xintercept=1, color='black', linetype='dashed', alpha=.5) +
+  facet_grid(exposurename ~ outcomename)+
+  theme_classic()
+ggplotly(P9)
+```
+
+```{r}
+#DBP----
+class(results_exposure_outcome$standard_error)
+P10 <- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID1" & outcomeid=="O7") %>%
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval))+
+  geom_point(aes(color=methodname)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on odds ratio', x='Odds ratio', y = 'StudyPMID_Author_exposure') +
+  geom_vline(xintercept=1, color='black', linetype='dashed', alpha=.5) +
+  facet_wrap(exposurename ~ methodname)+
+  theme_classic()
+ggplotly(P10)
+```
+```{r}
+#essentialhypertension----
+class(results_exposure_outcome$standard_error)
+P11 <- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID1" & outcomeid=="O5") %>%
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval))+
+  geom_point(aes(color=methodname)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on odds ratio', x='Odds ratio', y = 'Results_ID') +
+  geom_vline(xintercept=1, color='black', linetype='dashed', alpha=.5) +
+  facet_wrap(exposurename ~ methodname)+
+  theme_classic()
+ggplotly(P11)
+```
+

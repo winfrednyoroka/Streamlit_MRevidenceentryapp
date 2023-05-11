@@ -1,0 +1,641 @@
+---
+title: "MR_evidence_analysis_2023"
+author: "Winfred Gatua"
+date: "12/04/2023"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Does higher body mass index cause hypertension and or increase systolic and diastolic blood pressure:Systematic review of Mendelian randomization studies.
+
+## Introduction
+
+Mendelian randomization an approach that uses measured variation in genes to determine the causal effect of exposure on outcomes (*Davey Smith 2003*). MR studies are not biased by reverse causality since genes are constant and not modified by disease edevlopment.
+Obesity is a major driver of cardiometabolic disorders in the general population. It has immense clinical and economic consequences including cost of medication and absenteeism from work leading to great loss incurred by employers (*Apovian et al*).
+In the past decades the prevalence of hypertension has increased. Besides, its a major risk factor for cardiovascular diseases and occurs alongside other cardiovascular disease risk factors to cause disease.
+
+The aim of this study was to conduct a systematic literature review and metanalyses of MR studies to determine the causal role of Higher BMI on hypertension, systolic and diastolic blood pressure.
+
+# Methods
+
+### Literature retrieval, inclusion and exclusion criteria
+
+We searched  Medline on OvidSP for Mendelian randomization studies using the query (search terms) on 30th November 2022.
+
+Papers were eligible for inclusion if they reported estimates from MR analysis specifically of genetically predicted adulthood BMI on hypertension, systolic  or diastolic blood pressure.
+We excluded reviews, letters, commentary, articles of opinion and papers looking at childhood BMI.
+
+### Data extraction
+
+We extracted and entered the data in predefined tables. From each MR study we extracted: the first author name, year of publication, title of the study, total sample size including cases and controls for binary outcomes, the exposure name, the outcome name, the number of instruments variables, the source of these SNPs, the ancestry of the study population and the causal estimates including mean difference (MD), odds ratios, beta estimates with 95% confidence intervals and standard errors where applicable.
+
+### Statistical analysis
+
+## set working directory
+```{r}
+setwd("~/OneDrive - University of Bristol/Winfred_PhDApps/Streamlit_MRevidenceentryapp/")
+```
+
+### Load the libraries
+```{r}
+#install.packages('RSQLite')
+#install.packages("forestly")
+#devtools::install_github("elong0527/forestly")
+
+library(RSQLite)
+#library(ProjectTemplate)
+#library(dplyr)
+#library(dbplyr)
+library(ggplot2)
+library(plotly)
+library(gridExtra)
+library(tidyverse)
+#library(forestploter)
+library(grid)
+library(stringr)
+#library(stargazer)
+library(janitor)
+library(skimr)
+library(metafor)
+#library(glimpse)
+```
+
+```{r}
+getwd()
+#create.project(project.name = "mr_evidence_dataanalysis_04_2023",template = "minimal")
+```
+
+## Data preparation
+
+```{r}
+#Read in the data from the updated database
+con <- dbConnect(SQLite(),'Mr_EvidenceDB_30_03_2023')
+#list tables
+dbListTables(con) #list down the tables
+results <- tbl(con, 'results')
+colnames(results)
+results <- data.frame(results)
+#rename the columns
+colnames(results) <- c("results_id","pmid","methodid","effectsize","lowerinterval",
+                       "upperinterval", "pvalue","exposureid", "outcomeid", 
+                       "effectsizetype_id","se","strata" )
+
+#results
+#exposure
+exposure <- tbl(con, 'exposure')
+exposure <- data.frame(exposure)
+colnames(exposure) #<- c("exposurename","exposureid")
+#exposure
+#outcome
+outcome <- tbl(con, 'outcome')
+outcome <- data.frame(outcome)
+colnames(outcome) #<- c("outcomename","outcomeid") #rename the columns
+#outcome
+#methods
+methods <- tbl(con, 'methods')
+methods <- data.frame(methods)
+colnames(methods) <- c("methodname","methodid") #rename the columns
+#methods
+#study
+study <- tbl(con,'study')
+study <- data.frame(study)
+#study
+#study notes
+study_notes <- tbl(con,'studynotes')
+study_notes <- data.frame(study_notes)
+#study_notes
+colnames(study_notes) <- c("notesid","pmid", "no_ofIVs","analysistype", "resultsid","unitsofmeasurement","notes")
+#effectsizetype
+effectsizetype <- tbl(con,'effectsizetype')
+effectsizetype <- data.frame(effectsizetype)
+#effectsizetype
+#merge results table with effectsizetype tables
+results_effectsizetype <- merge(results,effectsizetype,by.x = "effectsizetype_id", by.y = "id")
+results_effectsizetype_methods <- merge(results_effectsizetype,methods, by.x="methodid",by.y = "methodid")
+#results_effectsizetype_methods
+#merging two dataframes results_effectsizetype_methods and exposure
+results_effectsizetype_methods_exp <- merge(results_effectsizetype_methods, exposure,by.x = "results_id",by.y = "resultsid")
+#merge the above dataframe and outcome
+results_effectsizetype_methods_exp_out <- merge(results_effectsizetype_methods_exp,outcome, by.x = "results_id",by.y = "resultsid")
+#merge with study notes
+results_effectsizetype_methods_exp_out_studynotes <- merge(results_effectsizetype_methods_exp_out,study_notes,by.x = "results_id",by.y="resultsid")
+#merge with study table
+results_effectsizetype_methods_exp_out_studynotes_study <- merge(results_effectsizetype_methods_exp_out_studynotes,study, by.x = "pmid.y",by.y = "pmid")
+mydata <- results_effectsizetype_methods_exp_out_studynotes_study
+
+#make a unique column to takeup the y-axis
+mydata$UID <- paste(mydata$author,mydata$pmid.x,mydata$year,mydata$results_id, sep = "_")
+
+#Make a unique column with additonal study characteristics for annotating the forest plot
+mydata$annotation <- paste(mydata$outcomemeasured,mydata$exposurenotes, mydata$outcomenotes,mydata$exposuremeasured,mydata$analysistype,
+                           mydata$unitsofmeasurement,mydata$notes, sep = ",")
+#write.table(x=mydata,"./mydata_excel.csv",sep = ",",col.names = TRUE,row.names = FALSE)
+```
+```{r}
+#slice_sample(mydata) #see a saple of random rows in random order
+skim(mydata) #summarize the dataframe
+summary(mydata)
+```
+
+```{r}
+library(metafor)
+library(tidyverse)
+dat1 <- read.csv("mydata_excel_updated.csv",header = TRUE) #read in the data
+
+#make a unique id without results id
+#make a unique column to takeup the y-axis
+dat1$ID <- paste(dat1$author,dat1$pmid.y,dat1$year, sep = "_")
+dat1
+
+```
+# Forest plots
+
+## Main findings
+
+
+### Odds ratio
+
+#### Hypertension
+
+Exclude **incident and gestational hypertension** from the analysis.
+Limit the analysis to European population only denoted by **EUR**.
+We have excluded results where the exposure is not BMI, by including how the exposure was measured.
+Louise AC Millard paper reports their findings in terms of 1 SD higher BMI genetic risk score (SD increase
+in BMI allelic score equates to 0.64kg/m2 increase in BMI). Original SD in the UKBiobank is 4.77kg/m2. to scale the estimates to 1 SD scale. we have multiplied the odds by (4.77/0.64 = 7.45)
+
+Tove Fall, include the prevalent hypertension as the main findings and not ever hypertension since it has a very small sample size, using 1 SNP at FTO locus(one unit increase in BMI(kg/m2). The results are expressed in terms of per unit increase in BMI 1 kg/m2. To convert the estimates to  1 SD scale, we have multiplied the odds estimates with the BMI units equivalence of SD in the GWAS included in the study. 1 SD = 4.62 kg/m2.
+
+Sussana et al, they used UKBB, to convert the estimates from per unit increase in BMI 1kg/m2  to 1 SD scale, we multiply the odds increase by 4.77.
+
+e.g OR=1.1,LI=1.07,UI=1.12 then; OR=(1.1-1)*4.77+1; LI=(1.07-1)*4.77+1; UI=(1.12-1)*4.77+1
+
+
+
+
+```{r}
+p1 <-
+  dat1 %>% 
+  arrange(ID) %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID1" &OUTCOMEID=="O1"  & exposurenotes=="Adult" &outcomenotes!="Gestational hypertension" &outcomenotes!="Incident hypertension"& population =="EUR" &AnalysisType=="Main" & EXPOSURE == "BMI") %>% 
+  ggplot(aes(y=reorder(ID,-year),x=effectsize_per1SD,xmin=LI_per1SD,xmax=UI_per1SD)) +
+  geom_segment(aes(yend=ID,xend=effectsize_per1SD))+
+  geom_point(aes(color=no_ofIVs)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on odds ratio', x='Odds ratio (95% CI) per SD increase in BMI', y = 'Author_PMID_Year') +
+  geom_vline(xintercept=1, color='black', linetype='dashed', alpha=.5) +
+  #facet_grid(outcomename ~ exposurename)+
+  theme_classic()
+ggplotly(p1)
+
+
+```
+Results of genetically predicted adulthood BMI in relation to hypertension. Results are scaled to per 1 SD increase in BMI. This analyses focuses exclusively on individuals of European ancestry.
+
+##### What does this plot tell you?
+
+Of the 7 studies that are reporting MR results of hypertension, the evidence therefore shows that genetically predicted higher adulthood BMI is associated with increased risk for hypertension.
+
+This metaanalysis found consistent results of higher genetically predicted BMI and increased risk for hypertension.
+Unlike Martin et al with inflated causal estimates the other papers are consistent even when with as low as 1 instrument; the case of Fall et al 2013.
+
+Louise et al used BMI genetic allelic score which is an instrument of lifelong BMI (exposure) instead of BMI at a given age.However we converted the scale to SD to match the rest of the papers
+
+```{r}
+#write down results table to accompany the plot
+P1 <-
+  dat1 %>% 
+  arrange(ID) %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID1" &OUTCOMEID=="O1"  & exposurenotes=="Adult" &outcomenotes!="Gestational hypertension" &outcomenotes!="Incident hypertension"& population =="EUR" &AnalysisType=="Main" & EXPOSURE == "BMI")
+
+#perform metanalysis to have the plots side by side
+# Calculate the log odds ratios and their standard errors
+#P1
+P1$logor <- log(P1$effectsize_per1SD)
+P1$SE <- (log(P1$UI_per1SD) - log(P1$LI_per1SD)) / (2*qnorm(0.025))
+
+# Perform the meta-analysis using the random-effects model
+mr_meta <- rma(yi = P1$logor, sei = P1$SE, method = "REML",measure = "OR")
+
+# Print the summary of the meta-analysis results
+summary(mr_meta)
+
+#funnel plot
+funnel(mr_meta)
+# print the corresponding confidence intervals
+confint(mr_meta)
+#funnel plot
+#funnel(mr_meta)
+
+# forest(mr_meta,xlab = "Odds Ratio",transf = exp,refline = 1,slab = P1$ID,
+#        xlim = c(-16,10),ilab = cbind(P1$NO_ofIVs, P1$unitsofmeasurement, P1$outcomenotes),ilab.xpos = c(-11,-8,-5),order = 'obs')
+# op <- par(cex = 0.75, font =2)
+# text(-9.5,15,"No_of_IVs")
+# text(-16,15,'Authors, PMID and Year', pos=4)
+# text(6,15,"Odds Ratio [95% CI]",pos = 2)
+
+# text(-16, -1, pos=4, cex=0.75, bquote(paste("RE Model (Q = ",
+#      .(formatC(mr_meta$QE, digits=2, format="f")), ", df = ", .(mr_meta$k - mr_meta$p),
+#      ", p = ", .(formatC(mr_meta$QEp, digits=2, format="f")), "; ", I^2, " = ",
+#      .(formatC(mr_meta$I2, digits=1, format="f")), "%)")))
+# par(op)
+
+
+# Create a forest plot of the meta-analysis results
+# forest(mr_meta)#, showweights = TRUE, slab = P1$ID)
+# # Create a forest plot of the meta-analysis results
+ggplot(P1, aes(x = log(effectsize_per1SD), y = ID, xmin = log(LI_per1SD), xmax = log(UI_per1SD))) +
+  geom_errorbarh(height = 0.1) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_point(aes(size = 1 / SE), shape = 21, fill = "white", color = "black") +
+  scale_size(range = c(2, 8)) +
+  #coord_flip() +
+  labs(x = "Odds ratio (log scale)", y = "", title = "Forest plot of Mendelian Randomization studies") +
+  theme_classic() +
+  theme(axis.text.y = element_text(size = 10), plot.title = element_text(hjust = 0.5, size = 12, face = "bold"))
+
+#d = sapply(P1[,c(48,6,17,33,34)],strwrap,width = 50, collapse = "\n")
+text_wrap <- function(label, ...){
+  labwrap <- stringr::str_wrap(label, 40)
+  gridExtra:::text_grob(label=labwrap, ...)
+}
+tt <- ttheme_default(core=list(fg_fun = text_wrap))
+
+grid.table(P1[,c(45,6,33)],theme =tt)
+
+P1
+#knitr::kable(grid.table(P1[,c(48,6,17,33,34)]), format = "html")
+```
+
+### Beta
+#### Systolic blood pressure
+
+NB:Beta coefficient is the degree of change of an outcome variable for every 1 unit change in the predictor/exposure variable. T-test assesses whether beta is signifcantly different from zero.
+Beta coefficient is positive, interpretation is that for every 1-unit increase in the predictor variable, the outcome will decrease by the beta coefficient value.
+Beta coefficient is negative, intrepretation is that for every 1-unit increase in the predictor variable, the outcome will increase by the beta coefficient value.
+
+Nicholas et al adjsusted for antihypertensive use by adding 10 mmHg to SBP
+Tove fall et al, adjsuted for hypertensive medication.
+Alice Giontella et al adjusted for medication using a stepped addition method where the additional value to scale estimate the BP correctly was based on number of medication taken ranging from 1 to 4 medications.(Malmo Diet and Cancer  cohort)
+WHile in Malmo Preventive Project cohort, 15 and 10 mmHg was added to SBP and DBP to correct for antihypertensive treatment since number of medications was not available
+
+Nicholas et al reported the effect estimates as change in blood pressure in mmHg per 10% increase in BMI. Transform the scale form 10% to per 1 unit increase in BMI(Kg/m2). i) Divide the estimates with 10 and multiply by 2.5(10% ofnormla BMI 25kg/m2).
+Tove Fall et al 2015; multiply the estimates by 4.7 to convert it to per 1 kg/m2.
+
+Wes Spiller et al 2018, constructed instruments form GIANT consortium on UKBiobank. They have constructed a weighted allelic score from the 96 SNPs and used this as a single strong instrument compared to using individual SNPs. They were comparing use of MRGXE with IVW in the presence of pleiotropy, MRGXE gives unbiased estimates. The limitation is that this sensitivity analsysis method is only applicable to when we have access to individual level data.
+
+Giontella et al, we selected the Malmo Diet and Cancer as our main results with sample size of about ~29k vs malmo preventive project ~9k. They ahve reported their results in terms of per 1 SD. We scaled this to per 1kg/m2 change in BMI. By multiplying the etimates with the BMI(SD) == 4.0
+
+Wes spiller et al 2022; They report the estimates and the Pvalues only. We calculated the confidence intervals by first calcutaing the z, then calculate the SE and fianlly claculate the CI at 95%.
+```{r}
+p2 <-
+dat1 %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID4" &OUTCOMEID=="O2" & AnalysisType=="Main" &exposurenotes=="Adult" &EXPOSURE == "BMI") %>% 
+  ggplot(.) +
+  geom_segment(aes(x=effectsize_per1SD,y=reorder(ID,-year),yend=ID,xend=effectsize_per1SD))+
+  geom_point(aes(x=effectsize_per1SD,y=reorder(ID,-year),color=no_ofIVs)) +
+  geom_errorbarh(aes(xmin=LI_per1SD,xmax=UI_per1SD,,y=reorder(ID,-year),height=.2)) +
+  labs(title='Forest plot based on beta estimates', x='Systolic blood pressure change in mmHg per one unit increase in BMI (Kg/m2)', y = 'Author_PMID_Year') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  #facet_grid(outcomename ~ exposurename)+
+  theme_classic()
+ggplotly(p2)
+
+ggplot()+
+  geom_errorbarh(mapping = )
+#Make a universal plotting function
+
+
+forest_plot <- function(data,x, y,xmin,xmax,title = " ",xlab =" ", ylab = " "){
+  ggplot(data, aes({{x}},{{y}},{{xmin}},{{xmax}}))+
+    geom_segment(aes(yend={{y}},xend={{x}}))+
+    geom_point(color = "blue")+
+    geom_errorbarh(aes(xmin={{xmin}},xmax={{xmax}},y={{y}},height = .2))+
+    labs(title=, x=, y = ) +
+    geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5)+
+    theme_classic()
+}
+
+forest_plot(p2,x= effectsize_per1SD, y =reorder(ID,-year) , xmin = LI_per1SD,xmax = UI_per1SD,
+            title ='Forest plot based on beta estimates',
+            xlab = 'Systolic blood pressure change in mmHg per one unit increase in BMI (Kg/m2)',
+            ylab = 'Author_PMID_Year')
+  
+
+
+#write out the dataframe in a table
+P2<- dat1 %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID4" &OUTCOMEID=="O2" & AnalysisType=="Main" &exposurenotes=="Adult" &EXPOSURE == "BMI")
+#grid.table(P2[,c(44,15,28,2)])#c(24,30,32,33)])
+#grid.arrange(tableGrob(p2,theme = tt3))
+
+text_wrap <- function(label, ...){
+  labwrap <- stringr::str_wrap(label, 40)
+  gridExtra:::text_grob(label=labwrap, ...)
+}
+tt <- ttheme_default(core=list(fg_fun = text_wrap))
+
+grid.table(P2[,c(51,38)],theme =tt)
+#knitr::kable(P2, format = "html")
+```
+This plot shows results of effects of genetically predicted adulthood BMI on systolic blood pressure. The beta coefficients are scaled to per 1 unit increase in BMI(kg/m2). There is clear evidence that for every one unit increase in genetically predicted BMI (Kg/m2) is associated with an increase in systolic blood pressure. This implies that a reduction in BMI would potentially results to a reduction in blood pressure. Wes Spiller et al 2022, is slightly different from the rest of the values since they are using MR-G estimation under no interaction with unmeasured selection (MR-GENIUS) which relies upon analogous assumptions to MR-GxE. The observed differenec could arise from bias due to violations arising from one or more unmeasured interactions.
+
+#Metaanalysis of the seven studies
+```{r}
+#write out the dataframe in a table
+P2<- dat1 %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID4" &OUTCOMEID=="O2" & AnalysisType=="Main" &exposurenotes=="Adult" &EXPOSURE == "BMI")
+#grid.table(P2[,c(44,15,28,2)])#c(24,30,32,33)])
+#grid.arrange(tableGrob(p2,theme = tt3))
+
+#perform metanalysis to have the plots side by side
+# Calculate the log odds ratios and their standard errors
+#P1
+P2$logor <- log(P2$effectsize_per1SD)
+P2$SE <- (log(P2$UI_per1SD) - log(P2$LI_per1SD)) / (2*qnorm(0.025))
+
+# Perform the meta-analysis using the random-effects model
+mr_meta <- rma(yi = P2$logor, sei = P2$SE, method = "REML",measure = "OR")
+
+# Print the summary of the meta-analysis results
+summary(mr_meta)
+
+#funnel plot
+funnel(mr_meta)
+# print the corresponding confidence intervals
+confint(mr_meta)
+#funnel plot
+#funnel(mr_meta)
+
+forest(mr_meta,xlab = "Beta coefficient",transf = exp,refline = 0,slab = P2$ID,
+        xlim = c(-16,10),ilab = cbind(P2$NO_ofIVs, P2$unitsofmeasurement, P2$outcomenotes),ilab.xpos = c(-11,-8,-5),order = 'obs')
+op <- par(cex = 0.75, font =2)
+text(-9.5,15,"No_of_IVs")
+text(-16,15,'Authors, PMID and Year', pos=4)
+text(6,15,"Odds Ratio [95% CI]",pos = 2)
+
+text(-16, -1, pos=4, cex=0.75, bquote(paste("RE Model (Q = ",
+     .(formatC(mr_meta$QE, digits=2, format="f")), ", df = ", .(mr_meta$k - mr_meta$p),
+     ", p = ", .(formatC(mr_meta$QEp, digits=2, format="f")), "; ", I^2, " = ",
+     .(formatC(mr_meta$I2, digits=1, format="f")), "%)")))
+ par(op)
+
+
+# Create a forest plot of the meta-analysis results
+# forest(mr_meta)#, showweights = TRUE, slab = P1$ID)
+# # Create a forest plot of the meta-analysis results
+ggplot(P2, aes(x = log(effectsize_per1SD), y = ID, xmin = log(LI_per1SD), xmax = log(UI_per1SD))) +
+  geom_errorbarh(height = 0.1) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_point(aes(size = 1 / SE), shape = 21, fill = "white", color = "black") +
+  scale_size(range = c(2, 8)) +
+  #coord_flip() +
+  labs(x = "Beta estimates (log scale)", y = "", title = "Forest plot of Mendelian Randomization studies") +
+  theme_classic() +
+  theme(axis.text.y = element_text(size = 10), plot.title = element_text(hjust = 0.5, size = 12, face = "bold"))
+
+
+
+
+text_wrap <- function(label, ...){
+  labwrap <- stringr::str_wrap(label, 40)
+  gridExtra:::text_grob(label=labwrap, ...)
+}
+tt <- ttheme_default(core=list(fg_fun = text_wrap))
+
+grid.table(P2[,c(51,38)],theme =tt)
+#knitr::kable(P2, format = "html")
+
+```
+
+#### Diastolic blood pressure
+
+For every 1 unit increase in genetic predisposition to BMI , diastolic blood pressure increases by this beta coefficient value.
+
+R135, IVs are associated with body fat percentage , with lower interval crossing the null.
+Alice Giontella et al, results are reported from two cohorts (MPP and MDC Swedish cohorts)
+
+Nicholas et al adjsusted for antihypertensive use by adding 5 mmHg to DBP 
+
+```{r}
+p3 <-
+  dat1 %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID4" &OUTCOMEID=="O3" & AnalysisType=="Main" &exposurenotes=="Adult" &EXPOSURE == "BMI") %>% 
+  ggplot(aes(y=reorder(ID,-year),x=effectsize_per1SD,xmin=LI_per1SD,xmax=UI_per1SD)) +
+  geom_point(aes(color=no_ofIVs)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on beta estimates', x='Diastolic blood pressure change in mmHg', y = 'Author_PMID_Year_resultsID') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  #facet_grid(outcomename ~ exposurename)+selec
+  theme_classic()
+ggplotly(p3)
+
+
+P3 <-
+  mydata %>% 
+  filter(effectsizetype_id=="ID4" &outcomeid.x=="O3" & analysistype=="Main" &exposurenotes=="Adult")
+grid.table(P3[,c(44,15,28,2)])
+
+knitr::kable(P3, format = "html")
+
+```
+
+### Mean Difference
+
+Results reported in terms of mean difference, denoted as ID2 under effectsizetype_id
+They encompass diastolic and systolic blood pressure as the outcome.
+
+#### Systolic blood pressure
+There is no systolic blood pressure investigated and estimated where the BMI was measured in Adults being reported in terms of mean difference
+```{r}
+# p4 <-
+#   mydata %>% 
+#   #group_by(pmid) %>% 
+#   filter(effectsizetype_id=="ID2" &outcomeid.x=="O2" & analysistype=="Main" &exposurenotes=="Adult") %>% 
+#   ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+#   geom_point(aes(color=outcomenotes)) +
+#   geom_errorbarh(height=.2) +
+#   labs(title='Forest plot based on mean difference', x='Systolic blood pressure change in mmHg', y = 'Author_PMID_Year_resultsID') +
+#   geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+#   #facet_grid(outcomename ~ exposurename)+
+#   theme_classic()
+# ggplotly(p4)
+```
+
+#### Diastolic blood pressure
+One study by Michael V Holmes et al reported results of causality between bmi and diastolic blood pressure(denoted by O3).
+Where the 14 instruments were aggregated to generated a genetic risk score.
+```{r}
+p5 <-
+  mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID2" &outcomeid.x=="O3" & analysistype=="Main" &exposurenotes=="Adult") %>% 
+  ggplot(aes(y=reorder(UID,-year),x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=no_ofIVs)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on mean difference', x='Diastolic blood pressure change in mmHg', y = 'Author_PMID_Year_resultsID') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  #facet_grid(outcomename ~ exposurename)+
+  theme_classic()
+ggplotly(p5)
+
+P5 <-mydata %>% 
+  filter(effectsizetype_id=="ID2" &outcomeid.x=="O3" & analysistype=="Main" &exposurenotes=="Adult")
+grid.table(P5[,c(44,15,28,2)])
+
+knitr::kable(P5, format = "html")
+```
+
+### Risk difference
+This includes hypertension and diastolic blood pressure as outcome
+
+#### Diastolic blood pressure
+A single study reporting risk difference of diastolic blood pressure
+
+```{R}
+p6 <-
+  mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID5" &outcomeid.x=="O3" & analysistype=="Main" &exposurenotes=="Adult") %>% 
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=no_ofIVs)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on risk difference', x='Diastolic blood pressure change in mmHg', y = 'Author_PMID_Year_resultsID') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  #facet_grid(outcomename ~ exposurename)+
+  theme_classic()
+ggplotly(p6)
+
+P6 <-mydata %>% 
+  filter(effectsizetype_id=="ID5" &outcomeid.x=="O3" & analysistype=="Main" &exposurenotes=="Adult")
+grid.table(P6[,c(44,15,28,2)])
+
+knitr::kable(P6, format = "html")
+```
+
+#### Hypertension
+
+```{r}
+p7 <-
+  mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID5" &outcomeid.x=="O1" & analysistype=="Main" &exposurenotes=="Adult") %>% 
+  ggplot(aes(y=UID,x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=no_ofIVs)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on risk difference', x='Risk difference for hypertension', y = 'Author_PMID_Year_resultsID') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  #facet_grid(outcomename ~ exposurename)+
+  theme_classic()
+ggplotly(p7)
+
+P7 <-mydata %>% 
+  filter(effectsizetype_id=="ID5" &outcomeid.x=="O1" & analysistype=="Main" &exposurenotes=="Adult")
+grid.table(P7[,c(44,15,28,2)])
+colnames(P7)
+knitr::kable(P7, format = "html")
+```
+
+## Sensitivity analysis
+
+### Odds ratio
+
+#### Hypertension
+
+Assess the directionality and consistency of results from the various sensitivity methods using BMI or other measures of adiposity as proxy for BMI.
+
+From the figure below there is evidence that genetic predisposition to higher BMI is associated with increased risk for hypertension across the four methods.
+
+With the exception of MR-Egger, where two studies show the confidence intervals crossing the null. This is expected since MR-Egger is known to be less robust.
+
+
+
+
+```{r}
+p8 <-
+  mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID1" &outcomeid.x=="O1" & analysistype=="sensitivity" &exposurenotes=="Adult" &outcomenotes!="Gestational hypertension" &methodname!="IVW") %>% 
+  ggplot(aes(y=reorder(UID,-year),x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=no_ofIVs,shape=methodname)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on odds ratio', x='Odds ratio (95% CI)', y = 'Author_PMID_Year_resultsID') +
+  geom_vline(xintercept=1, color='black', linetype='dashed', alpha=.5) +
+  facet_grid( exposurename~ methodname)+
+  theme_classic()
+ggplotly(p8)
+
+#write down results table to accompany the plot
+P8 <- mydata %>% 
+  filter(effectsizetype_id=="ID1" &outcomeid.x=="O1" & analysistype=="sensitivity" &exposurenotes=="Adult" &outcomenotes!="Gestational hypertension" &methodname!="IVW")
+grid.table(P8[,c(44,15,30,2)])
+
+knitr::kable(P8, format = "html")
+```
+### Beta
+#### Systolic blood pressure
+
+For every 1 unit increase in genetically predicted BMI, either measured directly or using other proxies of adiposity,
+systolic blood pressure increases by the point estimate value.
+
+```{r}
+p9 <-
+  mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID4" &outcomeid.x=="O2" & analysistype=="sensitivity" &exposurenotes=="Adult") %>% 
+  ggplot(aes(y=reorder(UID,-year),x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=no_ofIVs,shape=exposurename)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on beta estimates', x='Systolic blood pressure change in mmHg', y = 'Author_PMID_Year_resultsID') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  #facet_grid( exposurename~ methodname)+
+  theme_classic()
+ggplotly(p9)
+
+#write out the dataframe in a table
+P9<- mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID4" &outcomeid.x=="O2" & analysistype=="sensitivity" &exposurenotes=="Adult")
+grid.table(P9[,c(44,15,28,2)])#c(24,30,32,33)])
+#grid.arrange(tableGrob(p2,theme = tt3))
+
+knitr::kable(P9, format = "html")
+```
+
+#### Diastolic blood pressure
+
+Of these two papers, they show consistent directionality with increase in genetic predisposition to higher BMI being causal for an increase in diastolic blood pressure. 
+Except R147 where the IVs in use are associated with body fat percentage, and the inconclusive results with R148 where the IVs are associated with waist to hip ratio.
+
+```{r}
+p10 <-
+  mydata %>% 
+  #group_by(pmid) %>% 
+  filter(effectsizetype_id=="ID4" &outcomeid.x=="O3" & analysistype=="sensitivity" &exposurenotes=="Adult") %>% 
+  ggplot(aes(y=reorder(UID,-year),x=effectsize,xmin=lowerinterval,xmax=upperinterval)) +
+  geom_point(aes(color=no_ofIVs,shape=methodname)) +
+  geom_errorbarh(height=.2) +
+  labs(title='Forest plot based on beta etsimates', x='Diastolic blood pressure change in mmHg', y = 'Author_PMID_Year_resultsID') +
+  geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5) +
+  #facet_grid(outcomename ~ exposurename)+
+  theme_classic()
+ggplotly(p10)
+
+
+P10 <-
+  mydata %>% 
+  filter(effectsizetype_id=="ID4" &outcomeid.x=="O3" & analysistype=="sensitivity" &exposurenotes=="Adult")
+grid.table(P10[,c(44,15,28,2)])
+
+knitr::kable(P10, format = "html")
+
+```
