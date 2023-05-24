@@ -307,26 +307,51 @@ dat1 %>%
   theme_classic()
 ggplotly(p2)
 
-ggplot()+
-  geom_errorbarh(mapping = )
-#Make a universal plotting function
+
+# #Make a universal plotting function using ggplot
+# dat1$population
+# #modify
+# effectsizetype_id=="ID4" &OUTCOMEID=="O2" & AnalysisType=="Main" &exposurenotes=="Adult" & EXPOSURE == "BMI"
+
+forest_plot <- function(effectsizetype_id, OUTCOMEID, AnalysisType, exposurenotes, EXPOSURE,population,x, y,xmin,xmax,
+                        title = " ",xlab =" ", ylab = " ",colour = "red"){
+  dat1 %>% 
+  filter(.data$effectsizetype_id == .env$effectsizetype_id & .data$OUTCOMEID == .env$OUTCOMEID & .data$AnalysisType == .env$AnalysisType & .data$exposurenotes == .env$exposurenotes & .data$EXPOSURE == .env$EXPOSURE & .data$population == .env$population) %>% 
+    ggplot(.)+
+    geom_segment(aes(x = {{x}}, y={{y}},yend={{y}},xend={{x}}))+
+    geom_point(aes(x = {{x}}, y={{y}},color = colour))+
+    geom_errorbarh(aes(xmin={{xmin}},xmax={{xmax}},y={{y}},height = .2))+
+    labs(title=title, x=xlab, y =ylab ) +
+    geom_vline(xintercept=0, color=colour, linetype='dashed', alpha=.5)+
+    theme_classic()
+}
+
+forest_plot(effectsizetype_id = "ID4",OUTCOMEID = "O3",AnalysisType = "Main", exposurenotes = "Adult",EXPOSURE = "BMI",population ="EUR",x= effectsize_per1SD, y =reorder(ID,-year) , xmin = LI_per1SD,xmax = UI_per1SD,
+            title ='Forest plot based on beta estimates',
+            xlab = 'Systolic blood pressure change in mmHg per one unit increase in BMI (Kg/m2)',
+            ylab = 'Author_PMID_Year',colour = "red")
 
 
-forest_plot <- function(data,x, y,xmin,xmax,title = " ",xlab =" ", ylab = " "){
+
+
+####
+
+
+forest_plot <- function(data,x, y,xmin,xmax,title = " ",xlab =" ", ylab = " ",color,vline_color = ""){
   ggplot(data, aes({{x}},{{y}},{{xmin}},{{xmax}}))+
     geom_segment(aes(yend={{y}},xend={{x}}))+
-    geom_point(color = "blue")+
+    geom_point(color = factor(color))+
     geom_errorbarh(aes(xmin={{xmin}},xmax={{xmax}},y={{y}},height = .2))+
-    labs(title=, x=, y = ) +
-    geom_vline(xintercept=0, color='black', linetype='dashed', alpha=.5)+
+    labs(title=title, x=xlab, y =ylab ) +
+    geom_vline(xintercept=0, color=vline_color, linetype='dashed', alpha=.5)+
     theme_classic()
 }
 
 forest_plot(p2,x= effectsize_per1SD, y =reorder(ID,-year) , xmin = LI_per1SD,xmax = UI_per1SD,
             title ='Forest plot based on beta estimates',
             xlab = 'Systolic blood pressure change in mmHg per one unit increase in BMI (Kg/m2)',
-            ylab = 'Author_PMID_Year')
-  
+            ylab = 'Author_PMID_Year',color = p2$NO_ofIVs, vline_color = "red")
+P2 
 
 
 #write out the dataframe in a table
