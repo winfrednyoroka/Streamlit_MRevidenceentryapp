@@ -2,15 +2,11 @@
 title: "Does higher body mass index cause hypertension and or increase systolic and diastolic blood pressure:Systematic review of Mendelian randomization studies."
 author: "Winfred Gatua"
 date: "10/05/2023"
-output: word_document
+output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-\newpage
-\tableofcontents
-\listoffigures
-\listoftables
-\newpage
+
 
 ```{r setup, include=FALSE,message=FALSE, warning=FALSE, error=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
@@ -393,7 +389,7 @@ forester::forester(left_side_data = P4[,c(53,49,7)],
                    estimate = P4$effectsize,
                    ci_low = P4$lowerinterval,
                    ci_high = P4$upperinterval,
-                   xlim = c(-1,1),
+                   xlim = c(-0.1,0.12),
                    right_side_data = P4[,c(12,13,14)],
                    estimate_col_name = "Estimate (95% CI)",
                    point_sizes = 1.5,
