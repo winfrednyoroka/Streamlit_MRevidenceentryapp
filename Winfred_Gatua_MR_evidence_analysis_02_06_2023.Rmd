@@ -341,7 +341,7 @@ Fall et al 2015, adjusted for hypertensive medication. Calculate the mean BMI ac
 Giontella et al adjusted for medication using a stepped addition method where the additional value to scale estimate the BP correctly was based on number of medication taken ranging from 1 to 4 medications.(Malmo Diet and Cancer  cohort). While in Malmo Preventive Project cohort, 15 and 10 mmHg was added to SBP and DBP to correct for antihypertensive treatment since number of medications was not available. Giontella et al, we selected the Malmo Diet and Cancer as our main results with sample size of about ~29k vs malmo preventive project ~9k. They have reported their results in terms of SD change in SBP per 1 SD change in BMI.  To scale the estimates, multiply the change in SBP with SD in the general population (14.2mm Hg)
 
 Spiller et al 2018, constructed instruments form GIANT consortium on UKBiobank. They have constructed a weighted allelic score from the 96 SNPs and used this as a single strong instrument compared to using individual SNPs. They were comparing use of MRGXE with IVW in the presence of pleiotropy, MRGXE gives unbiased estimates. The limitation is that this sensitivity analysis method is only applicable to when we have access to individual level data.  
-Spiller et al 2022; They report the estimates and the P-values only. We calculated the confidence intervals by first calculating the z, then calculate the SE and finally calculate the CI at 95%. To scale both results to per SD of BMI, we have multiplied the estimates and their intervals by 4.77Kg/m^2; the SD of BMI in UKBiobank and SD of SBP (19.38 mm Hg) IN UKB .  
+Spiller et al 2022; They report the estimates and the P-values only. We calculated the confidence intervals by first calculating the z, then calculate the SE and finally calculate the CI at 95%. To scale both results to per SD of BMI, we have multiplied the estimates and their intervals by SD of SBP (19.38 mm Hg) in UKB .  
 
 ```{r fig.align='center', fig.cap= "**Figure 3:** Forest plot showing results of genetically predicted BMI in relation to Systolic blood pressure. The results are scaled to per 1 SD. Analyses includes individuals of European ancestry only"}
 plot2 <- forest_plot(P2, x = effectsize, y = reorder(ID,
@@ -360,12 +360,14 @@ datatable(P2[, c(53,2,12,13,14,7,49)],colnames = c("Author_PMID_Year","DOI","Est
 
 What do the results imply?  
 This plot shows results of effects of genetically predicted adulthood BMI on systolic blood pressure. The beta coefficients are scaled to per 1 SD increase in BMI (Kg/m^2). There is clear evidence that for every one SD increase in genetically predicted BMI (Kg/m^2) is associated with an increase in systolic blood pressure. This implies that a reduction in BMI  potentially results to a reduction in systolic blood pressure. Wes Spiller et al 2022, is slightly different from the rest of the values since they are using MR-G estimation under no interaction with unmeasured selection (MR-GENIUS) which relies upon analogous assumptions to MR-GxE.
-The observed difference could arise from bias due to violations arising from one or more unmeasured interactions.  
+The observed difference could arise from bias due to violations arising from one or more unmeasured interactions.   
 
 ### Diastolic blood pressure  
 
 For every 1 SD increase in genetic predisposition to BMI , diastolic blood pressure increases by this beta coefficient value.
-Nicholas et al adjusted for antihypertensive use by adding 5 mm Hg to DBP.  
+Nicholas et al adjusted for antihypertensive use by adding 5 mm Hg to DBP. Similar scaling as to what we applied on SBP was implemented here.
+Frank Windmeijer convert that between scales, Percentage change in DBP due to a 1% change in BMI. Calculate the CIs from the point estimate and standard errors point estimate in mm Hg percentage change * Mean DBP in UKBiobank (perc/100) * 81.80 CI= estimate+_margin_error margin of error at 95perc = 1.96xse. calculate the SD at 1% change in BMI. 1% of average BMI in UKBiobank is 0.273224kg/m^2, sd at 1perc = 0.273224 divide by 4.77 (sd of BMI in UKBiobank). Scale the change in DBP to 1 SD: estimates/((0.273224/4.77)), one_percmeanBMI = (1/100) * 27.3224, sd_BMI_UKB = 4.77, sd_at_1%ofBMI =  one_%meanBMI/sd_BMI_UKB, At 1 SD, what is the change in DBP in mm Hg:pointestimate/sd_at_1%ofBMI  
+
 ```{r fig.align='center', fig.cap= "**Figure 4:** Forest plot showing results of genetically predicted BMI in relation to Diastolic blood pressure. The results are scaled to per 1 SD. Analyses includes individuals of European ancestry only"}
 plot3 <- forest_plot(P3, x = effectsize, y = reorder(ID,
                                                      -year), xmin = lowerinterval, xmax = upperinterval,
