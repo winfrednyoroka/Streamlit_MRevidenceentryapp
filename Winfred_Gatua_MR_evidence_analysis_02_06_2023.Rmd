@@ -285,40 +285,6 @@ P3[P3$sd != 0, ]$lowerinterval = P3[P3$sd != 0, ]$lowerinterval *
 P3[P3$sd != 0, ]$upperinterval = P3[P3$sd != 0, ]$upperinterval *
   P3[P3$sd != 0, ]$sd
 
-
-
-# Hypertension; risk difference
-P4 <- dat1 %>%
-  arrange(ID) %>%
-  filter(effectsizetype_id == "ID5" & OUTCOMEID ==
-           "O1" & AnalysisType == "Main" & exposurenotes ==
-           "Adult" & EXPOSURE == "BMI")
-# Results expressed as increase in unit BMI
-# percentage point. Thus: multiply by sd and
-# divide by 100
-P4[P4$sd != 0, ]$effectsize = P4[P4$sd != 0, ]$effectsize *
-  P4[P4$sd != 0, ]$sd/100
-P4[P4$sd != 0, ]$lowerinterval = P4[P4$sd != 0, ]$lowerinterval *
-  P4[P4$sd != 0, ]$sd/100
-P4[P4$sd != 0, ]$upperinterval = P4[P4$sd != 0, ]$upperinterval *
-  P4[P4$sd != 0, ]$sd/100
-
-# Diastolic blood pressure, risk difference
-P5 <- dat1 %>%
-  arrange(ID) %>%
-  filter(effectsizetype_id == "ID5" & OUTCOMEID ==
-           "O3" & AnalysisType == "Main" & exposurenotes ==
-           "Adult" & EXPOSURE == "BMI")
-
-# 1SD increase in BMI increases 0.145 SD of DBP.
-# Thus:
-P5[P5$sd != 0, ]$effectsize = P5[P5$sd != 0, ]$effectsize *
-  P5[P5$sd != 0, ]$sd
-P5[P5$sd != 0, ]$lowerinterval = P5[P5$sd != 0, ]$lowerinterval *
-  P5[P5$sd != 0, ]$sd
-P5[P5$sd != 0, ]$upperinterval = P5[P5$sd != 0, ]$upperinterval *
-  P5[P5$sd != 0, ]$sd
-
 ```
 
 
@@ -410,7 +376,7 @@ plot3 <- forest_plot(P3, x = effectsize, y = reorder(ID,
 plot3 <- ggplotly(plot3)
 plot3
 ```
-
+  
 ```{r}
 datatable(P3[, c(53,2,12,13,14,7,49)],colnames = c("Author_PMID_Year","DOI","Estimate","Lowerinterval","Upperinterval","No.of IVs","Samplesize"),class = 'cell-border stripe',caption = "Table 3: Table showing the Author, PMID and Year, DOI,estimates and CIs, number of instrument variables and samplesize.")
 ```
@@ -418,52 +384,6 @@ datatable(P3[, c(53,2,12,13,14,7,49)],colnames = c("Author_PMID_Year","DOI","Est
 What does this mean?    
 For every 1 SD increase in genetically predicted BMI (Kg/m^2) is associated with DBP. This implies that lowering the BMI will lead to a reduction in DBP.  
 
-## Risk difference  
-### Hypertension  
-
-```{r fig.align='center', fig.cap= "**Figure 5:** Forest plot showing risk difference of genetically predicted BMI in relation to Hypertension. . Analyses includes individuals of European ancestry only"}
-plot4 <- forest_plot(P4, x = effectsize, y = reorder(ID,
-                                                     -year), xmin = lowerinterval, xmax = upperinterval,
-                     title = "Forest plot based on risk difference",
-                     xlab = "Risk difference (95% CI) per SD increase in BMI(Kg/m^2",
-                     ylab = "Author_PMID_Year",method = methodname, xintercept = 0)
-
-plot4 <- ggplotly(plot4)
-plot4
-```
-   
-```{r}
-datatable(P4[, c(53,2,12,13,14,7,49)],colnames = c("Author_PMID_Year","DOI","Estimate","Lowerinterval","Upperinterval","No.of IVs","Samplesize"),class = 'cell-border stripe',caption = "Table 4: Table showing the Author, PMID and Year, DOI,estimates and CIs, number of instrument variables and samplesize.")
-```
-   
-### Diastolic blood pressure  
-
-This figure 6 below shows that genetic predisposition to higher BMI is associated with a higher risk for higher DBP. These are results of a single paper and we will not proceed to perform a metaanalysis.  
-
-```{r fig.align='center', fig.cap= "**Figure 6:** Forest plot showing risk difference of genetically predicted BMI in relation to Diastolic blood pressure. . Analyses includes individuals of European ancestry only"}
-plot5 <- forest_plot(P5, x = effectsize, y = reorder(ID,
-                                                     -year), xmin = lowerinterval, xmax = upperinterval,
-                     title = "Forest plot based on risk difference",
-                     xlab = "Diastolic blood pressure change in mmHg per SD unit of BMI(Kg/m^2)",
-                     ylab = "Author_PMID_Year", method = methodname, xintercept = 0)
-plot5 <- ggplotly(plot5)
-plot5
-```
-```{r}
-datatable(P5[, c(53,2,12,13,14,7,49)],colnames = c("Author_PMID_Year","DOI","Estimate","Lowerinterval","Upperinterval","No.of IVs","Samplesize"),class = 'cell-border stripe',caption = "Table 5: Table showing the Author, PMID and Year, DOI,estimates and CIs, number of instrument variables and samplesize.")
-```
-  
-Notes from Carlos et al:  
-
-The table is correct, those are risk differences.  
-A (causal) Risk Difference of a unit increase in D is defined as:
-E[Y(d+1)] - E[Y(d)] 
-In linear models \tau equals the Risk Difference of a one unit increase in the treatment, that is:
-\tau = E[Y(d+1)] - E[Y(d)] 
-Formula (1) is an identification result of traditional MR/IV. It says that \tau is identified by the ratio of two regression coefficients.  
-Here BMI is standardized, so the Risk Difference tells you how much a one standard deviation increase in BMI increases the risk of DBP.
-All variables are standardized, so for DBP we have the 1 standard deviation increase in BMI increases 0.145 standard deviations of DBP.  
-   
 
 ## Metaanalysis  
 
@@ -485,37 +405,13 @@ summary(p1)
 confint(p1)
 ```
   
-Metaanalysis results show that genetically predicted higher BMI is associated with increased risk for hypertension (Figure 7). This is consistent across studies.  
+Metaanalysis results show that genetically predicted higher BMI is associated with increased risk for hypertension (Figure 5). This is consistent across studies.  
 
-```{r fig.align='center', fig.cap= "**Figure 7:** Metaanalysis results for genetically predicted BMI in relation to hypertension. The results are scaled to 1 SD increase of BMI.Analyses includes individuals of European ancestry only"}
+```{r fig.align='center', fig.cap= "**Figure 5:** Metaanalysis results for genetically predicted BMI in relation to hypertension. The results are scaled to 1 SD increase of BMI.Analyses includes individuals of European ancestry only"}
 forest_plot_meta(meta_res = p1, dat = Total, refline = 1,
             xlab = "Odds Ratio")
 
 ```
-
-### Metaanalysis of studies that investigated genetic predisposition to higher BMI on the risk of hypertension less Martin et al 2022. 
-
-```{r metanalysis of studies investigating the causal relationship between higher BMI and hypertension less Susan Martin et al 2022}
-### Metaanalysis of studies that investigated
-### genetic predisposition to higher BMI on the
-### risk of hypertension excluding 
-### Susan Martin et al
-Total <- Total %>% 
-  filter(pmid.y != 35074047)
-p1_less_Martin_etal <- MR_metaanalysis(Total, method = "REML", measure = "OR")
-
-summary(p1_less_Martin_etal)
-confint(p1_less_Martin_etal)
-```
-  
-Metaanalysis results show that genetically predicted higher BMI is associated with increased risk for hypertension (Figure 7). This is consistent across studies.  
-
-```{r fig.align='center', fig.cap= "**Figure 8:** Metaanalysis results for genetically predicted BMI in relation to hypertension. The results are scaled to 1 SD increase of BMI.Analyses includes individuals of European ancestry only"}
-forest_plot_meta(meta_res = p1_less_Martin_etal, dat = Total, refline = 1,
-            xlab = "Odds Ratio")
-
-```
-
   
 ### Metaanalysis of studies that investigated genetic predisposition to higher BMI on SBP  
 ```{r metanalysis of studies looking at systolic blood pressure,echo=FALSE}
@@ -530,7 +426,7 @@ confint(res)
   
 The metaanalysis shows that genetic predisposition to higher BMI is associated with higher systolic blood pressure. The results were consistent across the studies with 4 studies reporting slighlty smaller changes in SBP.  
 
-```{r fig.align='center', fig.cap= "**Figure 9:** Metaanalysis results for genetically predicted BMI in relation to systolic blood pressure. The results are scaled to 1 SD increase of BMI. Analyses includes individuals of European ancestry only"}
+```{r fig.align='center', fig.cap= "**Figure 6:** Metaanalysis results for genetically predicted BMI in relation to systolic blood pressure. The results are scaled to 1 SD increase of BMI. Analyses includes individuals of European ancestry only"}
 # systolic blood pressure in mmHg
 forest(res, xlim = c(-16, 16), ilab = cbind(P2$samplesize,
                                             P2$NO_ofIVs), ilab.xpos = c(-5, -1), slab = P2$ID,
@@ -558,7 +454,7 @@ confint(res)
 ```
   
 The metaanalysis shows that genetic predisposition to higher BMI is associated with higher diastolic blood pressure. The results were consistent across the studies with 2 studies reporting slighlty smaller changes in DBP. 
-```{r fig.align='center', fig.cap= "**Figure 10:** Metaanalysis results for genetically predicted BMI in relation to diastolic blood pressure. The results are scaled to 1 SD increase of BMI. Analyses includes individuals of European ancestry only"}
+```{r fig.align='center', fig.cap= "**Figure 7:** Metaanalysis results for genetically predicted BMI in relation to diastolic blood pressure. The results are scaled to 1 SD increase of BMI. Analyses includes individuals of European ancestry only"}
 forest(res, xlim = c(-16, 9), ilab = cbind(P3$samplesize,
                                            P3$NO_ofIVs), ilab.xpos = c(-5, -1), cex = 0.75,
        header = "Authors_PMID_Year", mlab = "", xlab = "Beta coefficients",
