@@ -1,7 +1,5 @@
 ---
 title: "Does higher body mass index cause hypertension and or increase systolic and diastolic blood pressure:Systematic review of Mendelian randomization studies."
-author: "Winfred Gatua"
-date: "2023-06-06"
 output:
   html_document:
     toc: true
@@ -42,7 +40,7 @@ We excluded reviews, letters, commentary, articles of opinion and papers looking
 
 We extracted and entered the data in predefined tables. From each MR study we extracted: the first author name, year of publication, title of the study, total sample size including cases and controls for binary outcomes, the exposure name, the outcome name, the number of instruments variables, the source of these SNPs, the ancestry of the study population and the causal estimates including mean difference (MD), odds ratios, beta estimates with 95% confidence intervals and standard errors where applicable.  
 
-### PRISMA Workflow 
+### PRISMA Workflow. 
 
 ```{r Flow chart, fig.align='center',fig.cap="**Figure 1:** Flow chart of study selection", echo=FALSE}
 #![Flow chart of study selection](PRISMA_WORKFLOW.png)
@@ -66,7 +64,7 @@ library(DT)
 
 ## Read in the data. 
 
-```{r Read in the data, echo=FALSE}
+```{r Read in the data, echo=TRUE}
 dat1 <- read.csv("BMI_Hypertension_SBP_DBP_MRevidencecsv.txt",header = TRUE,sep = "\t")
 #make a unique id without resultsid to takeup the y-axis
 dat1$ID <- paste(dat1$author,dat1$pmid.y,dat1$year, sep = "_")
@@ -74,7 +72,8 @@ dat1$ID <- paste(dat1$author,dat1$pmid.y,dat1$year, sep = "_")
 
 ## Define helper functions. 
 
-```{r scaling the odds ratio to sd scale, echo = TRUE}
+```{r Helper fucntions, echo = TRUE}
+#scaling the odds ratio to sd scale
 scale_or <- function(data, estimate, lowerbound, upperbound,
     sd) {
     data_modified <- data %>%
@@ -116,16 +115,51 @@ CI_calc_upper <- function(est, p) {
   return(upper_interval)
 }
 
+## Frank Windmeijer convert that between scales
+## Percentage change in DBP due to a 1% change in
+## BMI. Calculate the CIs from the point estimate
+## and standard errors point estimate in mm Hg
+## percentage change * Mean DBP in UKBiobank
+## (perc/100) * 81.80 CI= estimate+_margin_error
+## margin of error at 95% = 1.96*se
+pointestimate_calc <- function(est) {
+  dbp = 81.80
+  point_est <- (est/100) * dbp
+  return(point_est)
+}
+CI_calc_lower_se <- function(est, se) {
+  dbp =81.80
+  point_est <- (est/100) * dbp
+  margin_error <- 1.96 * se
+  lowerinterval <- point_est - margin_error
+  return(lowerinterval)
+}
+
+CI_calc_upper_se <- function(est, se) {
+  dbp =81.80
+  point_est <- (est/100) * dbp
+  margin_error <- 1.96 * se
+  upperinterval <- point_est + margin_error
+  return(upperinterval)
+}
+#Calculate the scaling factor
+frank_calc_sd <- function() {
+    one_percmeanBMI = (1/100) * 27.3224
+    sd_BMI_UKB = 4.77
+    sd_at_1_per_of_BMI = one_percmeanBMI/sd_BMI_UKB
+    return(sd_at_1_per_of_BMI)
+}
+
 #make a forest plot using ggplotly
 forest_plot <- function(dat1,x,y,xmin,xmax,
-                        title = " ",xlab =" ", ylab = " ",colour,xintercept){
+                        title = " ",xlab =" ", ylab = " ",method,xintercept){
   plot <- dat1 %>% 
     ggplot(.)+
     geom_segment(aes(x = {{x}}, y={{y}},yend={{y}},xend={{x}}))+
-    geom_point(aes(x = {{x}}, y={{y}},color = colour))+
+    geom_point(aes(x = {{x}}, y={{y}},color = {{method}}))+
     geom_errorbarh(aes(xmin={{xmin}},xmax={{xmax}},y={{y}},height = .2))+
     labs(title=title, x=xlab, y =ylab ) +
-    geom_vline(xintercept=xintercept, color=colour, linetype='dashed', alpha=.5)+
+    geom_vline(xintercept=xintercept, color="red", linetype='dashed', alpha=.5)+
     theme_classic()
   return(plot)
 }
@@ -158,9 +192,9 @@ forest_plot_meta <- function(meta_res, dat, refline, xlab = " ") {
 
 ```
 
-## Data wrangling
+## Data wrangling. 
 
-```{r explore the data, echo=FALSE}
+```{r explore the data, echo=TRUE}
 # head(dat1) Hypertension, odds ratio
 P1 <- dat1 %>%
   arrange(ID) %>%
@@ -225,12 +259,33 @@ P3 <- dat1 %>%
            "O3" & AnalysisType == "Main" & exposurenotes ==
            "Adult" & EXPOSURE == "BMI")
 
+# # Calculate lower and upper intervals given a
+# point estimate and a se
+scalingfactor = frank_calc_sd()
+Frank_2018 <- P3 %>%
+  filter(pmid.y == 31708716) %>%
+  mutate(lowerinterval = CI_calc_lower(effectsize,
+                                       se)/scalingfactor) %>%
+  mutate(upperinterval = CI_calc_upper(effectsize,
+                                       se)/scalingfactor) %>% 
+  mutate(effectsize = pointestimate_calc(effectsize)/scalingfactor)
+
+P3_less_Frank_2018 <- P3 %>%
+  filter(pmid.y != 31708716)
+
+# row bind the two dataframes
+P3 <- rbind(Frank_2018, P3_less_Frank_2018)
+# subset the data P3 scale the Beta effect
+# estimates in place
+
 P3[P3$sd != 0, ]$effectsize = P3[P3$sd != 0, ]$effectsize *
   P3[P3$sd != 0, ]$sd
 P3[P3$sd != 0, ]$lowerinterval = P3[P3$sd != 0, ]$lowerinterval *
   P3[P3$sd != 0, ]$sd
 P3[P3$sd != 0, ]$upperinterval = P3[P3$sd != 0, ]$upperinterval *
   P3[P3$sd != 0, ]$sd
+
+
 
 # Hypertension; risk difference
 P4 <- dat1 %>%
@@ -267,7 +322,7 @@ P5[P5$sd != 0, ]$upperinterval = P5[P5$sd != 0, ]$upperinterval *
 ```
 
 
-# Results  
+# Results.  
 
 ## Odds ratio  
 ### Hypertension 
@@ -276,9 +331,9 @@ We excluded **incident and gestational hypertension** from the analysis and limi
 
 Louise AC Millard paper reports their findings in terms of 1 SD higher BMI genetic risk score (SD increase in BMI allelic score equates to 0.64kg/m^2 increase in BMI). Original SD in the UKBiobank is 4.77kg/m^2. We scaled the estimates to 1 SD scale, 1 SD =  (4.77/0.64 = 7.45).
 
-Tove Fall, we have included the prevalent hypertension as the main findings and not ever hypertension since it has a very small sample size, using 1 SNP at FTO locus (one unit increase in BMI(kg/m^2). The results are expressed in terms of per unit increase in BMI 1 kg/m^2. To convert the estimates to  1 SD scale, we converted the odds ratio to beta scaled that using 1 SD = 4.62 kg/m^2 and transformed back to odds ratio.  
+Tove Fall 2013, we have included the prevalent hypertension as the main findings and not ever hypertension since it has a very small sample size, using 1 SNP at FTO locus (one unit increase in BMI(kg/m^2). The results are expressed in terms of per unit increase in BMI 1 kg/m^2. To convert the estimates to  1 SD scale, we converted the odds ratio to beta scaled that using 1 SD = 4.62 kg/m^2 and transformed back to odds ratio.  
 
-Sussana et al, Study revolved around UKBiobank, to convert the estimates from per unit increase in BMI 1kg/m^2  to 1 SD scale, sd = 4.77kg/m^2.  
+Sussana et al, Study using UKBiobank, to convert the estimates from per unit increase in BMI 1kg/m^2  to 1 SD scale, sd = 4.77kg/m^2.  
 
 To scale the odds ratio to uniform scale of 1 SD, we converted the ORs to beta estimates, scale the beta estimates and revert to odds ratio.    
 
@@ -286,9 +341,9 @@ To scale the odds ratio to uniform scale of 1 SD, we converted the ORs to beta e
 ```{r fig.align='center', fig.cap= "**Figure 2:** Forest plot showing results of genetically predicted BMI in relation to hypertension. The results are scaled to 1 SD increase of BMI. Analyses includes individuals of European ancestry only", echo=FALSE}
 ## Odds ratio Hypertension
 plot1 <- forest_plot(Total, x = oddsratio, y = reorder(ID,
-                                                       -year), xmin = OR_LI, xmax = OR_UI, title = "Forest plot based on odds ratio",
-                     xlab = "Odds ratio (95% CI) per SD increase in BMI",
-                     ylab = "Author_PMID_Year", colour = "red", xintercept = 1)
+                                                       -year), xmin = OR_LI, xmax = OR_UI,method = methodname, title = "Forest plot based on odds ratio",
+                     xlab = "Odds ratio (95% CI) per SD increase in BMI(Kg/m^2",
+                     ylab = "Author_PMID_Year", xintercept = 1)
 plot1 <- ggplotly(plot1)
 plot1
 ```
@@ -312,22 +367,22 @@ Beta coefficient is the degree of change of an outcome variable for every 1 unit
 Beta coefficient is positive, interpretation is that for every 1-unit increase in the predictor variable, the outcome will increase by the beta coefficient value.
 Beta coefficient is negative, interpretation is that for every 1-unit increase in the predictor variable, the outcome will decrease by the beta coefficient value.
 
-Nicholas et al adjusted for antihypertensive use by adding 10 mm Hg to SBP.
-Nicholas et al reported the effect estimates as change in blood pressure in mm Hg per 10% increase in BMI. Transform the scale form 10% to per 1 SD increase in BMI(Kg/m2). i) Divide the estimates with 10 and multiply by 4.27 Kg/m^2, which is the sd of BMI in the Danish population.  
+Timpson et al adjusted for antihypertensive use by adding 10 mm Hg to SBP.
+Timpson et al reported the effect estimates as change in blood pressure in mm Hg per 10% increase in BMI. Transform the scale form 10% to per 1 SD increase in BMI(Kg/m2). i) Divide the average BMI in Danish population (Copenhagen) by 10. 2.Divide the output with 4.27 which is the SD of BMI in Danish population. Multiply the estimates and the intervals with 1 divided by the output step 2,(1/0.6135831).
 
-Tove fall et al, adjusted for hypertensive medication. Tove Fall et al 2015; multiply the estimates by 4.62 to convert it to per 1 SD of BMI.  
+Fall et al 2015, adjusted for hypertensive medication. Calculate the mean BMI across the studies included and multiply the estimates to convert it to per 1 SD of BMI (SD = 4.62Kg/m^2).  
 
-Giontella et al adjusted for medication using a stepped addition method where the additional value to scale estimate the BP correctly was based on number of medication taken ranging from 1 to 4 medications.(Malmo Diet and Cancer  cohort). While in Malmo Preventive Project cohort, 15 and 10 mmHg was added to SBP and DBP to correct for antihypertensive treatment since number of medications was not available. Giontella et al, we selected the Malmo Diet and Cancer as our main results with sample size of about ~29k vs malmo preventive project ~9k. They have reported their results in terms of per 1 SD.   
+Giontella et al adjusted for medication using a stepped addition method where the additional value to scale estimate the BP correctly was based on number of medication taken ranging from 1 to 4 medications.(Malmo Diet and Cancer  cohort). While in Malmo Preventive Project cohort, 15 and 10 mmHg was added to SBP and DBP to correct for antihypertensive treatment since number of medications was not available. Giontella et al, we selected the Malmo Diet and Cancer as our main results with sample size of about ~29k vs malmo preventive project ~9k. They have reported their results in terms of SD change in SBP per 1 SD change in BMI.  To scale the estimates, multiply the change in SBP with SD in the general population (14.2mm Hg)
 
 Spiller et al 2018, constructed instruments form GIANT consortium on UKBiobank. They have constructed a weighted allelic score from the 96 SNPs and used this as a single strong instrument compared to using individual SNPs. They were comparing use of MRGXE with IVW in the presence of pleiotropy, MRGXE gives unbiased estimates. The limitation is that this sensitivity analysis method is only applicable to when we have access to individual level data.  
-Spiller et al 2022; They report the estimates and the P-values only. We calculated the confidence intervals by first calculating the z, then calculate the SE and finally calculate the CI at 95%. To scale both results to per SD of BMI, we have multiplied the estimates and their intervals by 4.77Kg/m^2; the SD of BMI in UKBiobank.  
+Spiller et al 2022; They report the estimates and the P-values only. We calculated the confidence intervals by first calculating the z, then calculate the SE and finally calculate the CI at 95%. To scale both results to per SD of BMI, we have multiplied the estimates and their intervals by 4.77Kg/m^2; the SD of BMI in UKBiobank and SD of SBP (19.38 mm Hg) IN UKB .  
 
 ```{r fig.align='center', fig.cap= "**Figure 3:** Forest plot showing results of genetically predicted BMI in relation to Systolic blood pressure. The results are scaled to per 1 SD. Analyses includes individuals of European ancestry only"}
 plot2 <- forest_plot(P2, x = effectsize, y = reorder(ID,
                                                      -year), xmin = lowerinterval, xmax = upperinterval,
                      title = "Forest plot based on beta estimates",
-                     xlab = "Systolic blood pressure change in mmHg per SD increase in BMI (Kg/m2)",
-                     ylab = "Author_PMID_Year", colour = "red", xintercept = 0)
+                     xlab = "Systolic blood pressure change in mmHg per SD increase in BMI(Kg/m^2)",
+                     ylab = "Author_PMID_Year", method = methodname, xintercept = 0)
 
 plot2 <- ggplotly(plot2)
 plot2
@@ -350,7 +405,7 @@ plot3 <- forest_plot(P3, x = effectsize, y = reorder(ID,
                                                      -year), xmin = lowerinterval, xmax = upperinterval,
                      title = "Forest plot based on beta estimates",
                      xlab = "Diastolic blood pressure change in mmHg per one SD increase in BMI (Kg/m^2)",
-                     ylab = "Author_PMID_Year", colour = "red", xintercept = 0)
+                     ylab = "Author_PMID_Year", method = methodname, xintercept = 0)
 
 plot3 <- ggplotly(plot3)
 plot3
@@ -370,8 +425,8 @@ For every 1 SD increase in genetically predicted BMI (Kg/m^2) is associated with
 plot4 <- forest_plot(P4, x = effectsize, y = reorder(ID,
                                                      -year), xmin = lowerinterval, xmax = upperinterval,
                      title = "Forest plot based on risk difference",
-                     xlab = "Risk difference (95% CI) per SD increase in BMI",
-                     ylab = "Author_PMID_Year", colour = "red", xintercept = 0)
+                     xlab = "Risk difference (95% CI) per SD increase in BMI(Kg/m^2",
+                     ylab = "Author_PMID_Year",method = methodname, xintercept = 0)
 
 plot4 <- ggplotly(plot4)
 plot4
@@ -389,8 +444,8 @@ This figure 6 below shows that genetic predisposition to higher BMI is associate
 plot5 <- forest_plot(P5, x = effectsize, y = reorder(ID,
                                                      -year), xmin = lowerinterval, xmax = upperinterval,
                      title = "Forest plot based on risk difference",
-                     xlab = "Diastolic blood pressure change in mmHg per one SD unit of BMI",
-                     ylab = "Author_PMID_Year", colour = "red", xintercept = 0)
+                     xlab = "Diastolic blood pressure change in mmHg per SD unit of BMI(Kg/m^2)",
+                     ylab = "Author_PMID_Year", method = methodname, xintercept = 0)
 plot5 <- ggplotly(plot5)
 plot5
 ```
@@ -419,7 +474,7 @@ We performed metaanalysis where the effect estimates measure had adequate number
 We performed metaanalysis of studies reporting on risk for hypertension as a result of increased genetically preicted BMI. MR estimates reported as odds ratios. We have not performed metaanalysis with regards to SBP and DBP, It is not clear how to specify that measure within metafor package.  
 
 
-```{r metanalysis of studies invetsigating the causal relationship between higher BMI and hypertension}
+```{r metanalysis of studies investigating the causal relationship between higher BMI and hypertension}
 ### Metaanalysis of studies that investigated
 ### genetic predisposition to higher BMI on the
 ### risk of hypertension
@@ -437,6 +492,30 @@ forest_plot_meta(meta_res = p1, dat = Total, refline = 1,
             xlab = "Odds Ratio")
 
 ```
+
+### Metaanalysis of studies that investigated genetic predisposition to higher BMI on the risk of hypertension less Martin et al 2022. 
+
+```{r metanalysis of studies investigating the causal relationship between higher BMI and hypertension less Susan Martin et al 2022}
+### Metaanalysis of studies that investigated
+### genetic predisposition to higher BMI on the
+### risk of hypertension excluding 
+### Susan Martin et al
+Total <- Total %>% 
+  filter(pmid.y != 35074047)
+p1_less_Martin_etal <- MR_metaanalysis(Total, method = "REML", measure = "OR")
+
+summary(p1_less_Martin_etal)
+confint(p1_less_Martin_etal)
+```
+  
+Metaanalysis results show that genetically predicted higher BMI is associated with increased risk for hypertension (Figure 7). This is consistent across studies.  
+
+```{r fig.align='center', fig.cap= "**Figure 8:** Metaanalysis results for genetically predicted BMI in relation to hypertension. The results are scaled to 1 SD increase of BMI.Analyses includes individuals of European ancestry only"}
+forest_plot_meta(meta_res = p1_less_Martin_etal, dat = Total, refline = 1,
+            xlab = "Odds Ratio")
+
+```
+
   
 ### Metaanalysis of studies that investigated genetic predisposition to higher BMI on SBP  
 ```{r metanalysis of studies looking at systolic blood pressure,echo=FALSE}
@@ -451,9 +530,9 @@ confint(res)
   
 The metaanalysis shows that genetic predisposition to higher BMI is associated with higher systolic blood pressure. The results were consistent across the studies with 4 studies reporting slighlty smaller changes in SBP.  
 
-```{r fig.align='center', fig.cap= "**Figure 8:** Metaanalysis results for genetically predicted BMI in relation to systolic blood pressure. The results are scaled to 1 SD increase of BMI. Analyses includes individuals of European ancestry only"}
+```{r fig.align='center', fig.cap= "**Figure 9:** Metaanalysis results for genetically predicted BMI in relation to systolic blood pressure. The results are scaled to 1 SD increase of BMI. Analyses includes individuals of European ancestry only"}
 # systolic blood pressure in mmHg
-forest(res, xlim = c(-16, 12), ilab = cbind(P2$samplesize,
+forest(res, xlim = c(-16, 16), ilab = cbind(P2$samplesize,
                                             P2$NO_ofIVs), ilab.xpos = c(-5, -1), slab = P2$ID,
        cex = 0.75, header = "Authors_PMID_Year", xlab = "Beta coefficients",
        order = "obs")  #,dat = P2,refline = 0, xlab = 'Beta coefficient' )
@@ -479,7 +558,7 @@ confint(res)
 ```
   
 The metaanalysis shows that genetic predisposition to higher BMI is associated with higher diastolic blood pressure. The results were consistent across the studies with 2 studies reporting slighlty smaller changes in DBP. 
-```{r fig.align='center', fig.cap= "**Figure 9:** Metaanalysis results for genetically predicted BMI in relation to diastolic blood pressure. The results are scaled to 1 SD increase of BMI. Analyses includes individuals of European ancestry only"}
+```{r fig.align='center', fig.cap= "**Figure 10:** Metaanalysis results for genetically predicted BMI in relation to diastolic blood pressure. The results are scaled to 1 SD increase of BMI. Analyses includes individuals of European ancestry only"}
 forest(res, xlim = c(-16, 9), ilab = cbind(P3$samplesize,
                                            P3$NO_ofIVs), ilab.xpos = c(-5, -1), cex = 0.75,
        header = "Authors_PMID_Year", mlab = "", xlab = "Beta coefficients",
