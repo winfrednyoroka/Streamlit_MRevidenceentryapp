@@ -123,28 +123,24 @@ CI_calc_upper <- function(est, p) {
 ## (perc/100) * 81.80 CI= estimate+_margin_error
 ## margin of error at 95% = 1.96*se
 pointestimate_calc <- function(est) {
-  dbp = 81.80
-  point_est <- (est/100) * dbp
+  dbp = log(81.80)#obtain the log of mean DBP
+  point_est <- exp((est/100) * dbp)
   return(point_est)
 }
-CI_calc_lower_se <- function(est, se) {
-  dbp =81.80
-  point_est <- (est/100) * dbp
-  margin_error <- 1.96 * se
-  lowerinterval <- point_est - margin_error
+CI_calc_lower_se <- function(lowerest) {
+  dbp = log(81.80)
+  lowerinterval <- exp((lowerest/100) * dbp)
   return(lowerinterval)
 }
 
-CI_calc_upper_se <- function(est, se) {
-  dbp =81.80
-  point_est <- (est/100) * dbp
-  margin_error <- 1.96 * se
-  upperinterval <- point_est + margin_error
+CI_calc_upper_se <- function(upperest) {
+  dbp = log(81.80)
+  upperinterval <- exp((upperest/100) * dbp)
   return(upperinterval)
 }
 #Calculate the scaling factor
 frank_calc_sd <- function() {
-    one_percmeanBMI = (1/100) * 27.3224
+    one_percmeanBMI = exp((1/100) * log(27.3224))
     sd_BMI_UKB = 4.77
     sd_at_1_per_of_BMI = one_percmeanBMI/sd_BMI_UKB
     return(sd_at_1_per_of_BMI)
@@ -264,10 +260,8 @@ P3 <- dat1 %>%
 scalingfactor = frank_calc_sd()
 Frank_2018 <- P3 %>%
   filter(pmid.y == 31708716) %>%
-  mutate(lowerinterval = CI_calc_lower(effectsize,
-                                       se)/scalingfactor) %>%
-  mutate(upperinterval = CI_calc_upper(effectsize,
-                                       se)/scalingfactor) %>% 
+  mutate(lowerinterval = CI_calc_lower_se(lowerinterval)/scalingfactor) %>%
+  mutate(upperinterval = CI_calc_upper_se(upperinterval)/scalingfactor) %>% 
   mutate(effectsize = pointestimate_calc(effectsize)/scalingfactor)
 
 P3_less_Frank_2018 <- P3 %>%
