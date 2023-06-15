@@ -233,10 +233,10 @@ P2 <- dat1 %>%
 # point estimate and a pvalue
 Wes_2022 <- P2 %>%
   filter(pmid.y == 35947639) %>%
-  mutate(lowerinterval = CI_calc_lower(effectsize,
-                                       pvalue)) %>%
-  mutate(upperinterval = CI_calc_upper(effectsize,
-                                       pvalue))
+  mutate(lowerinterval = round(CI_calc_lower(effectsize,
+                                       pvalue),2)) %>%
+  mutate(upperinterval = round(CI_calc_upper(effectsize,
+                                       pvalue),2))
 
 P2_less_Wes_2022 <- P2 %>%
   filter(pmid.y != 35947639)
